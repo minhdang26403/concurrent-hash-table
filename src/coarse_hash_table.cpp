@@ -72,6 +72,8 @@ bool CoarseHashTable<KeyType, ValueType>::Contains(const KeyType &key) {
 
 template <typename KeyType, typename ValueType>
 void CoarseHashTable<KeyType, ValueType>::GrowHashTable() {
+  // Allocates a new hash table and copies all key-value pair from
+  // the old hash table
   auto new_table = new std::vector<Entry>[capacity_ * 2];
   for (size_t idx = 0; idx < capacity_; ++idx) {
     for (const auto &entry : table_[idx]) {

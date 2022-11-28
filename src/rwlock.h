@@ -5,10 +5,10 @@
 #include <mutex>
 
 class ReaderWriterLock {
-  static constexpr uint32_t MAX_READERS = UINT_MAX;
  public:
   ReaderWriterLock() = default;
   ~ReaderWriterLock() {
+    // Try to get the lock before destroying the mutex
     std::lock_guard<std::mutex> lock(mutex_);
   }
 
@@ -23,7 +23,8 @@ class ReaderWriterLock {
    */
   void ReadLock() {
     std::unique_lock<std::mutex> lock(mutex_);
-    while (writer_entered_ || reader_count_ == MAX_READERS) {
+    // Readers have to wait if at least one writer comes
+    while (writer_entered_) {
       reader_.wait(lock);
     }
     ++reader_count_;
@@ -35,14 +36,10 @@ class ReaderWriterLock {
   void ReadUnlock() {
     std::lock_guard<std::mutex> lock(mutex_);
     --reader_count_;
-    if (writer_entered_) {
-      if (reader_count_ == 0) {
+    // If there is a writer waiting to acquire the lock
+    // and this is the last reader, we notify other writers
+    if (writer_entered_ && reader_count_ == 0) {
         writer_.notify_one();
-      }
-    } else {
-      if (reader_count_ == MAX_READERS - 1) {
-        reader_.notify_one();
-      }
     }
   }
 
@@ -51,10 +48,12 @@ class ReaderWriterLock {
    */
   void WriteLock() {
     std::unique_lock<std::mutex> lock(mutex_);
+    // Wait one the same variable as readers
     while (writer_entered_) {
       reader_.wait(lock);
     }
     writer_entered_ = true;
+    // Wait for readers to complete
     while (reader_count_ > 0) {
       writer_.wait(lock);
     }
