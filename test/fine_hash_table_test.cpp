@@ -91,12 +91,36 @@ void Test3() {
       << " ms \n";
 }
 
+void insert(int i, FineHashTable<int, int> &hash_table) {
+  int start = i * 60;
+  for (int i = start; i < start + 60; ++i) {
+    hash_table.Insert(i, i);
+  }
+}
+
+void Test4() {
+  FineHashTable<int, int> hash_table;
+  std::vector<std::thread> threads;
+  std::vector<std::pair<int, int>> random_kv;
+  for (int i = 0; i < 4; ++i) {
+    threads.push_back(
+        std::thread(insert, i, std::ref(hash_table)));
+  }
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  std::cout << hash_table.size() << std::endl;
+
+}
 
 
 int main() {
   // Test1();
   // Test2();
   Test3();
+  // Test4();
 
   std::cout << "All test cases passed\n";
 
