@@ -3,6 +3,7 @@
 
 #include "rwlock.h"
 
+#include <atomic>
 #include <list>
 
 
@@ -32,10 +33,7 @@ class Bucket {
    * @param other the bucket to move from
    * @return a reference to this bucket
    */
-  Bucket &operator=(Bucket &&other) { 
-    list_ = std::move(other.GetList());
-    return *this;
-  }
+  Bucket& operator=(Bucket &other);
 
   /**
    * Gets the value of a key within the current bucket
@@ -55,18 +53,16 @@ class Bucket {
    * Inserts a key-value pair into this bucket
    * @param key the key to insert
    * @param value the value to insert
-   * @param[out] size the size of the whole hash table
    */
-  void InsertKV(const KeyType &key, const ValueType &value, size_t &size);
+  bool InsertKV(const KeyType &key, const ValueType &value);
 
   /**
    * Deletes a key-value pair from this bucket
    * @param key the key to delete
-   * @param size the size of the whole hash table
    */
-  void DeleteKV(const KeyType &key, size_t &size);
+  bool DeleteKV(const KeyType &key);
 
-  std::vector<Entry>& GetList() { return list_; }
+  std::vector<Entry>& GetKVList() { return list_; }
  private: 
   // A private lock of each bucket
   ReaderWriterLock lock_;
@@ -101,6 +97,8 @@ class FineHashTable {
    * Destroys an existing FineHashTable instance
    */
   ~FineHashTable();
+
+  size_t size() const { return size_; }
 
   /**
    * Gets the value of a key-value pair
@@ -153,7 +151,9 @@ class FineHashTable {
   // An array of buckets
   Bucket<KeyType, ValueType> *table_;
   // The current number of key-value pairs in the hash table
-  size_t size_{0};
+  std::atomic<size_t> size_{0};
+  // size_t size_{0};
+
   // One global reader/writer lock: a writer lock is used when growing the hash
   // table while other procedure use a reader lock
   ReaderWriterLock global_lock_;

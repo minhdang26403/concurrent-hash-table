@@ -35,7 +35,9 @@ void CoarseHashTable<KeyType, ValueType>::Insert(const KeyType &key, const Value
   }
   table_[idx].emplace_back(key, value);
   ++size_;
+
   if (size_ > max_load_factor_ * capacity_) {
+    lock_.WriteUnlock();
     GrowHashTable();
   }
   lock_.WriteUnlock();
@@ -74,6 +76,7 @@ template <typename KeyType, typename ValueType>
 void CoarseHashTable<KeyType, ValueType>::GrowHashTable() {
   // Allocates a new hash table and copies all key-value pair from
   // the old hash table
+  lock_.ReadLock();
   auto new_table = new std::vector<Entry>[capacity_ * 2];
   for (size_t idx = 0; idx < capacity_; ++idx) {
     for (const auto &entry : table_[idx]) {
@@ -81,7 +84,10 @@ void CoarseHashTable<KeyType, ValueType>::GrowHashTable() {
       new_table[new_idx].push_back(entry);
     }
   }
+  lock_.ReadUnlock();
+  lock_.WriteLock();
   capacity_ *= 2;
   delete[] table_;
   table_ = new_table;
+  lock_.WriteUnlock();
 }

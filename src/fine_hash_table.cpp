@@ -1,16 +1,25 @@
 #include "fine_hash_table.h"
 
+template <typename KeyType, typename ValueType>
+Bucket<KeyType, ValueType>& Bucket<KeyType, ValueType>::operator=(Bucket &other) {
+  lock_.WriteLock();
+  list_ = other.GetKVList();
+  lock_.WriteUnlock();
+  return *this;
+}
+
 template<typename KeyType, typename ValueType>
 ValueType Bucket<KeyType, ValueType>::GetKV(const KeyType &key) {
   lock_.ReadLock();
+  ValueType value {};
   for (const auto &entry : list_) {
     if (entry.key_ == key) {
-      lock_.ReadUnlock();
-      return entry.value_;
+      value = entry.value_;
+      break;
     }
   }
   lock_.ReadUnlock();
-  return ValueType();
+  return value;
 }
 
 template<typename KeyType, typename ValueType>
@@ -26,32 +35,35 @@ bool Bucket<KeyType, ValueType>::ContainsKV(const KeyType &key) {
   return false;
 }
 
-template<typename KeyType, typename ValueType>
-void Bucket<KeyType, ValueType>::InsertKV(const KeyType &key, const ValueType &value, size_t &size) {
+template <typename KeyType, typename ValueType>
+bool Bucket<KeyType, ValueType>::InsertKV(const KeyType &key,
+                                          const ValueType &value) {
   lock_.WriteLock();
   for (auto &entry : list_) {
     if (entry.key_ == key) {
       entry.value_ = value;
       lock_.WriteUnlock();
+      return false;
     }
   }
 
   list_.emplace_back(key, value);
-  ++size;
   lock_.WriteUnlock();
+  return true;
 }
 
-template<typename KeyType, typename ValueType>
-void Bucket<KeyType, ValueType>::DeleteKV(const KeyType &key, size_t &size) {
+template <typename KeyType, typename ValueType>
+bool Bucket<KeyType, ValueType>::DeleteKV(const KeyType &key) {
   lock_.WriteLock();
   for (auto it = list_.begin(); it != list_.end(); ++it) {
     if (it->key_ == key) {
       list_.erase(it);
-      --size;
-      break;
+      lock_.WriteUnlock();
+      return true;
     }
   }
   lock_.WriteUnlock();
+  return false;
 }
 
 template<typename KeyType, typename ValueType>
@@ -89,7 +101,9 @@ void FineHashTable<KeyType, ValueType>::Insert(const KeyType &key, const ValueTy
   }
 
   size_t idx = KeyToIndex(key);
-  table_[idx].InsertKV(key, value, size_);
+  if (table_[idx].InsertKV(key, value)) {
+    ++size_;
+  }
   global_lock_.ReadUnlock();
 }
 
@@ -97,18 +111,23 @@ template<typename KeyType, typename ValueType>
 void FineHashTable<KeyType, ValueType>::Delete(const KeyType &key) {
   global_lock_.ReadLock();
   size_t idx = KeyToIndex(key);
-  table_[idx].DeleteKV(key, size_);
+  if (table_[idx].DeleteKV(key)) {
+    --size_;
+  } 
   global_lock_.ReadUnlock();
 }
 
 template<typename KeyType, typename ValueType>
 void FineHashTable<KeyType, ValueType>::GrowHashTable() {
-  // Must take a write lock since we modify the entire hash table
-  global_lock_.WriteLock();
+  global_lock_.ReadLock();
   auto new_table = new Bucket<KeyType, ValueType>[capacity_ * 2];
   for (size_t idx = 0; idx < capacity_; ++idx) {
-    new_table[idx] = std::move(table_[idx]);
+    new_table[idx] = table_[idx];
   }
+  global_lock_.ReadUnlock();
+
+  // Must take a write lock since we modify the entire hash table
+  global_lock_.WriteLock();
   capacity_ *= 2;
   delete[] table_;
   table_ = new_table;
