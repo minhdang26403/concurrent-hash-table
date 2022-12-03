@@ -66,6 +66,7 @@ void Test3() {
   FineHashTable<int, int> hash_table;
   std::vector<std::thread> threads;
   std::vector<std::pair<int, int>> random_kv;
+  // Prep data
   for (int i = 0; i < NUM_KEYS; ++i) {
     int k = rand();
     int v = rand();
@@ -73,6 +74,7 @@ void Test3() {
     random_kv.emplace_back(k, v);
   }
 
+  
   auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < NUM_THREADS; ++i) {
     threads.push_back(
@@ -92,8 +94,8 @@ void Test3() {
 }
 
 void insert(int i, FineHashTable<int, int> &hash_table) {
-  int start = i * 60;
-  for (int i = start; i < start + 60; ++i) {
+  int start = i * 500;
+  for (int i = start; i < start + 500; ++i) {
     hash_table.Insert(i, i);
   }
 }
