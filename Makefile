@@ -3,7 +3,7 @@
 
 CC = gcc
 CPP = g++
-CFLAGS = -Wall -Wno-unused-function -std=c++17
+CFLAGS = -Wall -Wno-unused-function -std=c++17 -pthread -g -fsanitize=address
 LIBs = -lm
 TESTDIR = ./test
 INCLUDEDIR = -I./src -I.
