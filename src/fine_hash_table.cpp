@@ -119,15 +119,13 @@ void FineHashTable<KeyType, ValueType>::Delete(const KeyType &key) {
 
 template<typename KeyType, typename ValueType>
 void FineHashTable<KeyType, ValueType>::GrowHashTable() {
-  global_lock_.ReadLock();
+  // Must take a global write lock since we modify the entire hash table
+  global_lock_.WriteLock();
   auto new_table = new Bucket<KeyType, ValueType>[capacity_ * 2];
   for (size_t idx = 0; idx < capacity_; ++idx) {
     new_table[idx] = table_[idx];
   }
-  global_lock_.ReadUnlock();
 
-  // Must take a write lock since we modify the entire hash table
-  global_lock_.WriteLock();
   capacity_ *= 2;
   delete[] table_;
   table_ = new_table;

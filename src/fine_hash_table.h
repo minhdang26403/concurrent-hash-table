@@ -152,7 +152,6 @@ class FineHashTable {
   Bucket<KeyType, ValueType> *table_;
   // The current number of key-value pairs in the hash table
   std::atomic<size_t> size_{0};
-  // size_t size_{0};
 
   // One global reader/writer lock: a writer lock is used when growing the hash
   // table while other procedure use a reader lock
