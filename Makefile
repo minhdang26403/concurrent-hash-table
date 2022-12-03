@@ -3,7 +3,7 @@
 
 CC = gcc
 CPP = g++
-CFLAGS = -Wall -Wno-unused-function -std=c++11
+CFLAGS = -Wall -Wno-unused-function -std=c++17
 LIBs = -lm
 TESTDIR = ./test
 INCLUDEDIR = -I./src -I.
