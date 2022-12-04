@@ -92,9 +92,6 @@ void Test3() {
       << " ms \n";
 }
 
-void insert(int id, FineHashTable<int, int> &hash_table) {
-  int start = id * 500;
-  for (int i = start; i < start + 500; ++i) {
 void insert(int i, FineHashTable<int, int> &hash_table) {
   int stride = NUM_KEYS / NUM_THREADS;
   int start = i * stride;
