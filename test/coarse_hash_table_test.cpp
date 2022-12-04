@@ -10,7 +10,6 @@
 
 static int NUM_THREADS = 4;
 static constexpr int NUM_OPS = 1000000;
-
 enum Ops {
   READ,
   INSERT,
