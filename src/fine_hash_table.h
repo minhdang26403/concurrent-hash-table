@@ -1,10 +1,9 @@
 #ifndef FINE_HASH_TABLE_H_
 #define FINE_HASH_TABLE_H_
 
-#include <algorithm>
+
 #include <atomic>
 #include <vector>
-#include <iostream>
 
 #include "rwlock.h"
 
