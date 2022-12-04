@@ -2,7 +2,6 @@
 #define RWLOCK_H_
 
 
-#include <mutex>
 #include <shared_mutex>
 
 class ReaderWriterLock {
@@ -36,7 +35,7 @@ class ReaderWriterLock {
   }
 
  private:
-  // A mutex protects shared variables
+  // C++17 implementation for reader/writer lock
   std::shared_mutex mutex_;
 };
 
