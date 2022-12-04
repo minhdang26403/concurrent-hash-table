@@ -94,13 +94,15 @@ bool FineHashTable<KeyType, ValueType>::Contains(const KeyType &key) {
 
 template<typename KeyType, typename ValueType>
 void FineHashTable<KeyType, ValueType>::Insert(const KeyType &key, const ValueType &value) {
-  global_lock_.ReadLock();
+  global_lock_.WriteLock();
   if (size_ > capacity_ * max_load_factor_) {
-    global_lock_.ReadUnlock();
     GrowHashTable();
-    global_lock_.ReadLock();
+    global_lock_.WriteUnlock();
+  } else {
+    global_lock_.WriteUnlock();
   }
 
+  global_lock_.ReadLock();
   size_t idx = KeyToIndex(key);
   if (table_[idx].InsertKV(key, value)) {
     ++size_;
@@ -121,7 +123,6 @@ void FineHashTable<KeyType, ValueType>::Delete(const KeyType &key) {
 template<typename KeyType, typename ValueType>
 void FineHashTable<KeyType, ValueType>::GrowHashTable() {
   // Must take a global write lock since we modify the entire hash table
-  global_lock_.WriteLock();
   auto new_table = new Bucket<KeyType, ValueType>[capacity_ * 2];
   for (size_t idx = 0; idx < capacity_; ++idx) {
     new_table[idx] = table_[idx];
@@ -130,5 +131,4 @@ void FineHashTable<KeyType, ValueType>::GrowHashTable() {
   capacity_ *= 2;
   delete[] table_;
   table_ = new_table;
-  global_lock_.WriteUnlock();
 }
