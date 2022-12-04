@@ -17,7 +17,8 @@ class AtomicLinkedList {
   struct Node {
     KeyType key_;      // the key of a node
     ValueType value_;  // the value of a node
-    MarkPtrType ptr_{};  // a wrapper for the `next` pointer pointing to the next node
+    MarkPtrType
+        ptr_{};  // a wrapper for the `next` pointer pointing to the next node
 
     /**
      * Constructs a Node instance
@@ -34,9 +35,8 @@ class AtomicLinkedList {
    * and extra information
    */
 
-  struct MarkPtrType {
-    __int128_t val{};  // underlying type for the pointer
-
+  class MarkPtrType {
+   public:
     MarkPtrType() = default;
 
     /**
@@ -57,33 +57,43 @@ class AtomicLinkedList {
      * @param other the other MarkPtrType object to compare with
      * @return true if two objects are equal; otherwise, return false
      */
-    bool operator==(const MarkPtrType &other) { return val == other.val; }
+    bool operator==(const MarkPtrType &other) const { return val == other.val; }
 
     /**
      * Not equal operator overloading for MarkPtrType object
      * @param other the other MarkPtrType object to compare with
      * @return true if two objects are not equal; otherwise, return false
      */
-    bool operator!=(const MarkPtrType &other) { return !(*this == other); }
+    bool operator!=(const MarkPtrType &other) const {
+      return !(*this == other);
+    }
 
     /**
      * Gets the pointer field
      * @return a pointer to the next node
      */
-    Node *GetPtr() { return (Node *)(val & MASK); }
+    constexpr Node *GetNextPtr() const { return (Node *)(val & MASK); }
 
     /**
      * Gets the tag field
      * @return the tag of the MarkPtrType object
      */
-    uint64_t GetTag() { return static_cast<uint64_t>((val >> 64) & MASK); }
+    constexpr uint64_t GetTag() const {
+      return static_cast<uint64_t>((val >> 64) & MASK);
+    }
 
     /**
      * Gets the mark field
      * @return true if the node holding this MarkPtrType object is deleted;
      * otherwise, return false
      */
-    bool GetMark() { return static_cast<bool>(val & 0x1); }
+    constexpr bool GetMark() const { return static_cast<bool>(val & 0x1); }
+
+    /**
+     * Gets the underlying value of the MarkPtrType
+     * Used for compare-and-swap
+     */
+    constexpr __int128_t GetValue() const { return val; }
 
     /**
      * Sets the mark and `next` pointer field
@@ -105,6 +115,8 @@ class AtomicLinkedList {
       val |= ctag;
     }
 
+   private:
+    __int128_t val{};  // underlying type for the pointer
     // Mask for extracting lower-order 8 bytes
     static const uint64_t MASK = 0xffffffffffffffff;
   };
@@ -113,9 +125,9 @@ class AtomicLinkedList {
    * a struct captures a snapshot of the linked list
    */
   struct Snapshot {
-    MarkPtrType *prev;
+    MarkPtrType *prev_ptr;
+    MarkPtrType prev;
     MarkPtrType cur;
-    MarkPtrType next;
   };
 
  public:
@@ -129,24 +141,24 @@ class AtomicLinkedList {
   bool Insert(const KeyType &key, const ValueType &value) {
     auto node = new Node(key, value);
     Snapshot snapshot;
-    MarkPtrType *prev;
-    MarkPtrType cur;
+    MarkPtrType *prev_ptr;
+    MarkPtrType prev;
 
     while (true) {
       if (Find(key, nullptr, &snapshot)) {
         delete node;
         return false;
       }
+      prev_ptr = snapshot.prev_ptr;
       prev = snapshot.prev;
-      cur = snapshot.cur;
 
-      node->ptr_.SetMarkPtr(0, cur.GetPtr());
+      node->ptr_.SetMarkPtr(0, prev.GetNextPtr());
 
-      MarkPtrType oldval(0, cur.GetPtr(), cur.GetTag());
-      MarkPtrType newval(0, node, cur.GetTag() + 1);
+      MarkPtrType oldval(0, prev.GetNextPtr(), prev.GetTag());
+      MarkPtrType newval(0, node, prev.GetTag() + 1);
 
-      if (__sync_bool_compare_and_swap((__int128_t *)prev, oldval.val,
-                                       newval.val)) {
+      if (__sync_bool_compare_and_swap((__int128_t *)prev_ptr,
+                                       oldval.GetValue(), newval.GetValue())) {
         return true;
       }
     }
@@ -154,83 +166,84 @@ class AtomicLinkedList {
 
   bool Delete(const KeyType &key) {
     Snapshot snapshot;
-    MarkPtrType *prev;
+    MarkPtrType *prev_ptr;
+    MarkPtrType prev;
     MarkPtrType cur;
-    MarkPtrType next;
 
     while (true) {
       if (!Find(key, nullptr, &snapshot)) {
         return false;
       }
+      prev_ptr = snapshot.prev_ptr;
       prev = snapshot.prev;
       cur = snapshot.cur;
-      next = snapshot.next;
 
-      MarkPtrType oldval(0, next.GetPtr(), next.GetTag());
-      MarkPtrType newval(1, next.GetPtr(), next.GetTag() + 1);
-      if (!__sync_bool_compare_and_swap((__int128_t *)&cur.GetPtr()->ptr_,
-                                        oldval.val, newval.val)) {
+      MarkPtrType oldval(0, cur.GetNextPtr(), cur.GetTag());
+      MarkPtrType newval(1, cur.GetNextPtr(), cur.GetTag() + 1);
+      if (!__sync_bool_compare_and_swap((__int128_t *)&prev.GetNextPtr()->ptr_,
+                                        oldval.GetValue(), newval.GetValue())) {
         continue;
       }
 
-      if (__sync_bool_compare_and_swap(
-              (__int128_t *)prev,
-              MarkPtrType(0, cur.GetPtr(), cur.GetTag()).val,
-              MarkPtrType(0, next.GetPtr(), cur.GetTag() + 1).val)) {
-        DeleteNode(cur.GetPtr());
-        return true;
+      oldval = MarkPtrType(0, prev.GetNextPtr(), prev.GetTag());
+      newval = MarkPtrType(0, cur.GetNextPtr(), prev.GetTag() + 1);
+
+      if (__sync_bool_compare_and_swap((__int128_t *)prev_ptr,
+                                       oldval.GetValue(), newval.GetValue())) {
+        DeleteNode(prev.GetNextPtr());
       } else {
         Find(key, nullptr, &snapshot);
       }
+      return true;
     }
-    return true;
   }
 
-  bool Find(const KeyType &key, ValueType *value=nullptr, Snapshot *snapshot=nullptr) {
+  bool Find(const KeyType &key, ValueType *value = nullptr,
+            Snapshot *snapshot = nullptr) {
   try_again:
-    MarkPtrType *prev = head;
-    MarkPtrType cur = *prev;
-    MarkPtrType next;
+    MarkPtrType *prev_ptr = head;
+    MarkPtrType prev = *prev_ptr;
+    MarkPtrType cur;
     while (true) {
-      if (cur.GetPtr() == nullptr) {
+      if (prev.GetNextPtr() == nullptr) {
         if (snapshot != nullptr) {
+          snapshot->prev_ptr = prev_ptr;
           snapshot->prev = prev;
           snapshot->cur = cur;
-          snapshot->next = next;
         }
         return false;
       }
-      next = cur.GetPtr()->ptr_;
-      KeyType ckey = cur.GetPtr()->key_;
-      if (*prev != MarkPtrType(0, cur.GetPtr(), cur.GetTag())) {
+      cur = prev.GetNextPtr()->ptr_;
+      KeyType ckey = prev.GetNextPtr()->key_;
+      if (*prev_ptr != MarkPtrType(0, prev.GetNextPtr(), prev.GetTag())) {
         goto try_again;
       }
-      if (!next.GetMark()) {
+      if (!cur.GetMark()) {
         if (ckey >= key) {
           if (ckey == key && value != nullptr) {
-            *value = cur.GetPtr()->value_;
+            *value = prev.GetNextPtr()->value_;
           }
           if (snapshot != nullptr) {
+            snapshot->prev_ptr = prev_ptr;
             snapshot->prev = prev;
             snapshot->cur = cur;
-            snapshot->next = next;
           }
           return ckey == key;
         }
-        prev = &(cur.GetPtr()->ptr_);
+        prev_ptr = &(prev.GetNextPtr()->ptr_);
       } else {
-        MarkPtrType oldval(0, cur.GetPtr(), cur.GetTag());
-        MarkPtrType newval(0, next.GetPtr(), cur.GetTag() + 1);
+        MarkPtrType oldval(0, prev.GetNextPtr(), prev.GetTag());
+        MarkPtrType newval(0, cur.GetNextPtr(), prev.GetTag() + 1);
 
-        if (__sync_bool_compare_and_swap((__int128_t *)prev, oldval.val,
-                                         newval.val)) {
-          DeleteNode(cur.GetPtr());
-          next.SetTag(cur.GetTag() + 1);
+        if (__sync_bool_compare_and_swap(
+                (__int128_t *)prev_ptr, oldval.GetValue(), newval.GetValue())) {
+          DeleteNode(prev.GetNextPtr());
+          cur.SetTag(prev.GetTag() + 1);
         } else {
           goto try_again;
         }
       }
-      cur = next;
+      prev = cur;
     }
   }
 
@@ -242,23 +255,21 @@ class AtomicLinkedList {
 
   void Print() {
     MarkPtrType *node = head;
-    while (node->GetPtr() != nullptr) {
-      std::cout << node->GetPtr()->key_ << ' ' << node->GetPtr()->value_
+    while (node->GetNextPtr() != nullptr) {
+      std::cout << node->GetNextPtr()->key_ << ' ' << node->GetNextPtr()->value_
                 << std::endl;
-      node = &(node->GetPtr()->ptr_);
+      node = &(node->GetNextPtr()->ptr_);
     }
   }
 
-  void DeleteNode(Node *node) { 
-    delete node; 
-  }
+  void DeleteNode(Node *node) { delete node; }
 
   void Deallocate(MarkPtrType *node) {
-    if (node->GetPtr() == nullptr) {
+    if (node->GetNextPtr() == nullptr) {
       return;
     }
-    Deallocate(&(node->GetPtr()->ptr_));
-    delete node->GetPtr();
+    Deallocate(&(node->GetNextPtr()->ptr_));
+    delete node->GetNextPtr();
   }
 
  private:

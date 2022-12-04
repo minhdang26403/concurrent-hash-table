@@ -73,14 +73,10 @@ class LockFreeHashTable {
     return std::hash<KeyType>{}(key) % capacity_;
   }
 
-  /**
-   * Grows the hash table (doubles the number of buckets) when the hash table
-   * gets dense
-   */
-  void GrowHashTable();
-
   // Default size of the hash table
-  static constexpr size_t DEFAULT_CAPACITY{100013};
+  // Grow hash table needs a lock, so choose a default size for the hash table
+  // Costs memory but gets a very fast performance
+  static constexpr size_t DEFAULT_CAPACITY{100017};
   static constexpr float DEFAULT_LOAD_FACTOR{0.75};
 
   size_t capacity_; // number of buckets
