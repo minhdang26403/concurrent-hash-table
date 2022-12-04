@@ -95,12 +95,17 @@ void Test3() {
 void insert(int id, FineHashTable<int, int> &hash_table) {
   int start = id * 500;
   for (int i = start; i < start + 500; ++i) {
+void insert(int i, FineHashTable<int, int> &hash_table) {
+  int stride = NUM_KEYS / NUM_THREADS;
+  int start = i * stride;
+  for (int i = start; i < start + stride; ++i) {
     hash_table.Insert(i, i);
   }
-
-  for (int i = start; i < start + 500; ++i) {
-    if (!hash_table.Contains(i)) {
-      std::cout << i << std::endl;
+  for (int i = start; i < start + stride; ++i) {
+    if (i % 5 == 0) {
+      assert(hash_table.Contains(i)); 
+      // assert(hash_table.Get(i) == i); 
+      // hash_table.Delete(i); 
     }
     assert(hash_table.Contains(i)); 
     // assert(hash_table.Get(i) == i); 
