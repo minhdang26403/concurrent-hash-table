@@ -2,8 +2,6 @@
 #define LOCK_FREE_HASH_TABLE_H_
 
 
-#include <atomic>
-
 #include "atomic_linked_list.h"
 #include "rwlock.h"
 

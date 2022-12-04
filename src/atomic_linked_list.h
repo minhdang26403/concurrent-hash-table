@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <iostream>
+#include <vector>
 
 template <typename KeyType, typename ValueType>
 class AtomicLinkedList {
@@ -127,13 +128,12 @@ class AtomicLinkedList {
 
   bool Insert(const KeyType &key, const ValueType &value) {
     auto node = new Node(key, value);
-    ValueType dummy_value{};
     Snapshot snapshot;
     MarkPtrType *prev;
     MarkPtrType cur;
 
     while (true) {
-      if (Find(key, dummy_value, snapshot)) {
+      if (Find(key, nullptr, &snapshot)) {
         delete node;
         return false;
       }
@@ -142,7 +142,7 @@ class AtomicLinkedList {
 
       node->ptr_.SetMarkPtr(0, cur.GetPtr());
 
-      MarkPtrType oldval(false, cur.GetPtr(), cur.GetTag());
+      MarkPtrType oldval(0, cur.GetPtr(), cur.GetTag());
       MarkPtrType newval(0, node, cur.GetTag() + 1);
 
       if (__sync_bool_compare_and_swap((__int128_t *)prev, oldval.val,
@@ -153,22 +153,21 @@ class AtomicLinkedList {
   }
 
   bool Delete(const KeyType &key) {
-    ValueType dummy_value{};
     Snapshot snapshot;
     MarkPtrType *prev;
     MarkPtrType cur;
     MarkPtrType next;
 
     while (true) {
-      if (!Find(key, dummy_value, snapshot)) {
+      if (!Find(key, nullptr, &snapshot)) {
         return false;
       }
       prev = snapshot.prev;
       cur = snapshot.cur;
       next = snapshot.next;
 
-      MarkPtrType oldval(false, next.GetPtr(), next.GetTag());
-      MarkPtrType newval(true, next.GetPtr(), next.GetTag() + 1);
+      MarkPtrType oldval(0, next.GetPtr(), next.GetTag());
+      MarkPtrType newval(1, next.GetPtr(), next.GetTag() + 1);
       if (!__sync_bool_compare_and_swap((__int128_t *)&cur.GetPtr()->ptr_,
                                         oldval.val, newval.val)) {
         continue;
@@ -176,26 +175,29 @@ class AtomicLinkedList {
 
       if (__sync_bool_compare_and_swap(
               (__int128_t *)prev,
-              MarkPtrType(false, cur.GetPtr(), cur.GetTag()).val,
-              MarkPtrType(false, next.GetPtr(), cur.GetTag() + 1).val)) {
+              MarkPtrType(0, cur.GetPtr(), cur.GetTag()).val,
+              MarkPtrType(0, next.GetPtr(), cur.GetTag() + 1).val)) {
         DeleteNode(cur.GetPtr());
         return true;
       } else {
+        Find(key, nullptr, &snapshot);
       }
     }
     return true;
   }
 
-  bool Find(const KeyType &key, ValueType &value, Snapshot &snapshot) {
+  bool Find(const KeyType &key, ValueType *value=nullptr, Snapshot *snapshot=nullptr) {
   try_again:
     MarkPtrType *prev = head;
     MarkPtrType cur = *prev;
     MarkPtrType next;
     while (true) {
       if (cur.GetPtr() == nullptr) {
-        snapshot.prev = prev;
-        snapshot.cur = cur;
-        snapshot.next = next;
+        if (snapshot != nullptr) {
+          snapshot->prev = prev;
+          snapshot->cur = cur;
+          snapshot->next = next;
+        }
         return false;
       }
       next = cur.GetPtr()->ptr_;
@@ -205,21 +207,24 @@ class AtomicLinkedList {
       }
       if (!next.GetMark()) {
         if (ckey >= key) {
-          if (ckey == key) {
-            value = cur.GetPtr()->value_;
+          if (ckey == key && value != nullptr) {
+            *value = cur.GetPtr()->value_;
           }
-          snapshot.prev = prev;
-          snapshot.cur = cur;
-          snapshot.next = next;
+          if (snapshot != nullptr) {
+            snapshot->prev = prev;
+            snapshot->cur = cur;
+            snapshot->next = next;
+          }
           return ckey == key;
         }
         prev = &(cur.GetPtr()->ptr_);
       } else {
-        MarkPtrType oldval(false, cur.GetPtr(), cur.GetTag());
+        MarkPtrType oldval(0, cur.GetPtr(), cur.GetTag());
         MarkPtrType newval(0, next.GetPtr(), cur.GetTag() + 1);
 
         if (__sync_bool_compare_and_swap((__int128_t *)prev, oldval.val,
                                          newval.val)) {
+          DeleteNode(cur.GetPtr());
           next.SetTag(cur.GetTag() + 1);
         } else {
           goto try_again;
@@ -231,8 +236,7 @@ class AtomicLinkedList {
 
   ValueType Search(const KeyType &key) {
     ValueType value{};
-    Snapshot snapshot;
-    Find(key, value, snapshot);
+    Find(key, &value);
     return value;
   }
 
@@ -245,7 +249,9 @@ class AtomicLinkedList {
     }
   }
 
-  void DeleteNode(Node *node) { delete node; }
+  void DeleteNode(Node *node) { 
+    delete node; 
+  }
 
   void Deallocate(MarkPtrType *node) {
     if (node->GetPtr() == nullptr) {
