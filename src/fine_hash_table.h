@@ -1,16 +1,15 @@
 #ifndef FINE_HASH_TABLE_H_
 #define FINE_HASH_TABLE_H_
 
-#include "rwlock.h"
-
 #include <atomic>
 #include <list>
 
+#include "rwlock.h"
 
 /**
  * Bucket object of a hash table
  */
-template<typename KeyType, typename ValueType>
+template <typename KeyType, typename ValueType>
 class Bucket {
  private:
   struct Entry {
@@ -29,8 +28,8 @@ class Bucket {
 
  public:
   /**
-   * Move assignment operator
-   * @param other the bucket to move from
+   * Copy assignment operator
+   * @param other the bucket to copy from
    * @return a reference to this bucket
    */
   Bucket& operator=(Bucket &other);
@@ -62,19 +61,18 @@ class Bucket {
    */
   bool DeleteKV(const KeyType &key);
 
-  std::vector<Entry>& GetKVList() { return list_; }
- private: 
-  // A private lock of each bucket
-  ReaderWriterLock lock_;
-  // A chain within each bucket (use vector for better locality)
-  std::vector<Entry> list_;
+  std::vector<Entry> &GetKVList() { return list_; }
+
+ private:
+  ReaderWriterLock lock_; // the private lock of each bucket
+  std::vector<Entry> list_; // a chain within each bucket (use vector for better locality)
 };
 
 
 /**
  * Fine-grained hash table where each bucket has its own reader/writer lock
  */
-template<typename KeyType, typename ValueType>
+template <typename KeyType, typename ValueType>
 class FineHashTable {
  public:
   /**
@@ -143,21 +141,20 @@ class FineHashTable {
    */
   void GrowHashTable();
 
-  // Default number of buckets
+  // Default hash table size
   static constexpr size_t DEFAULT_CAPACITY{128};
   static constexpr float DEFAULT_LOAD_FACTOR{0.75};
-  size_t capacity_;
+
+  size_t capacity_;                    // number of buckets
   float max_load_factor_;
-  // An array of buckets
-  Bucket<KeyType, ValueType> *table_;
-  // The current number of key-value pairs in the hash table
-  std::atomic<size_t> size_{0};
+  std::atomic<size_t> size_{0};  // number of key-value pairs in the hash table
+  Bucket<KeyType, ValueType> *table_;  // array of buckets
 
   // One global reader/writer lock: a writer lock is used when growing the hash
-  // table while other procedure use a reader lock
+  // table while other procedures use a reader lock
   ReaderWriterLock global_lock_;
 };
 
 #include "fine_hash_table.cpp"
 
-#endif // FINE_HASH_TABLE_H_
+#endif  // FINE_HASH_TABLE_H_

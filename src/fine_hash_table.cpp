@@ -68,6 +68,7 @@ bool Bucket<KeyType, ValueType>::DeleteKV(const KeyType &key) {
 
 template<typename KeyType, typename ValueType>
 FineHashTable<KeyType, ValueType>::~FineHashTable() {
+  // Must take a write lock to destroy the hash table
   global_lock_.WriteLock();
   delete []table_;
   global_lock_.WriteUnlock();
