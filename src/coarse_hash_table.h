@@ -1,7 +1,6 @@
 #ifndef COARSE_HASH_TABLE_H_
 #define COARSE_HASH_TABLE_H_
 
-#include <list>
 #include <vector>
 
 #include "rwlock.h"
