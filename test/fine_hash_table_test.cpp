@@ -95,11 +95,12 @@ void Test3() {
 }
 
 void insert(int i, FineHashTable<int, int> &hash_table) {
-  int start = i * 500;
-  for (int i = start; i < start + 500; ++i) {
+  int stride = NUM_KEYS / NUM_THREADS;
+  int start = i * stride;
+  for (int i = start; i < start + stride; ++i) {
     hash_table.Insert(i, i);
   }
-  for (int i = start; i < start + 500; ++i) {
+  for (int i = start; i < start + stride; ++i) {
     if (i % 5 == 0) {
       assert(hash_table.Contains(i)); 
       // assert(hash_table.Get(i) == i); 

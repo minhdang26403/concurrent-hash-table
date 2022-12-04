@@ -113,8 +113,9 @@ void Test3() {
 }
 
 void do_work_test4(int i, CoarseHashTable<int, int> &hash_table) {
-  int start = i * 500;
-  for (int i = start; i < start + 500; ++i) {
+  int stride = NUM_KEYS / NUM_THREADS; 
+  int start = i * stride;
+  for (int i = start; i < start + stride; ++i) {
     hash_table.Insert(i, i);
   }
   for (int i = start; i < start + 500; ++i) {
