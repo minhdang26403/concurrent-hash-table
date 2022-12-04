@@ -1,20 +1,19 @@
 #ifndef ATOMIC_LINKED_LIST_H_
 #define ATOMIC_LINKED_LIST_H_
 
-#include <stdlib.h>
-
 #include <atomic>
 #include <iostream>
 
-#define SIZE 48
-#define STAMP_MASK 0xFFFF000000000000
-#define MARK_MASK 0x1
 
 template <typename KeyType, typename ValueType>
 class AtomicLinkedList {
  public:
   // Forward declaration
   struct MarkPtrType;
+
+  /**
+   * Node object contains key-value pair and MarkPtr field
+   */
   struct Node {
     KeyType key_;
     ValueType value_;
@@ -35,9 +34,9 @@ class AtomicLinkedList {
       val |= ((uint64_t)next) | (mark ? 1 : 0);
     }
 
-    bool operator!=(const MarkPtrType &other) { return val != other.val; }
-
     bool operator==(const MarkPtrType &other) { return val == other.val; }
+
+    bool operator!=(const MarkPtrType &other) { return !(*this == other); }
 
     Node *GetPtr() { return (Node *)(val & MASK); }
 
@@ -69,6 +68,8 @@ class AtomicLinkedList {
   bool Insert(const KeyType &key, const ValueType &value) {
     auto node = new Node(key, value);
     ValueType dummy_value{};
+    MarkPtrType *prev;
+    MarkPtrType cur;
 
     while (true) {
       if (Find(key, dummy_value)) {

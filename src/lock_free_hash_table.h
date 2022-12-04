@@ -1,16 +1,20 @@
 #ifndef LOCK_FREE_HASH_TABLE_H_
 #define LOCK_FREE_HASH_TABLE_H_
 
+
+#include <atomic>
+
 #include "atomic_linked_list.h"
 #include "rwlock.h"
 
-template<typename KeyType, typename ValueType>
+template <typename KeyType, typename ValueType>
 class LockFreeHashTable {
  public:
   /**
    * Default constructor
    */
-  LockFreeHashTable() : LockFreeHashTable(DEFAULT_CAPACITY, DEFAULT_LOAD_FACTOR) {}
+  LockFreeHashTable()
+      : LockFreeHashTable(DEFAULT_CAPACITY, DEFAULT_LOAD_FACTOR) {}
 
   /**
    * Creates a new LockFreeHashTable instance
@@ -27,7 +31,7 @@ class LockFreeHashTable {
    * Disallows copy
    */
   LockFreeHashTable(const LockFreeHashTable &other) = delete;
-  LockFreeHashTable& operator=(const LockFreeHashTable &other) = delete;
+  LockFreeHashTable &operator=(const LockFreeHashTable &other) = delete;
 
   /**
    * Destroys an existing LockFreeHashTable instance.
@@ -77,19 +81,17 @@ class LockFreeHashTable {
    */
   void GrowHashTable();
 
-  // Default number of buckets
-  static constexpr size_t DEFAULT_CAPACITY {128};
-  static constexpr float DEFAULT_LOAD_FACTOR {0.75};
-  size_t capacity_;
+  // Default size of the hash table
+  static constexpr size_t DEFAULT_CAPACITY{100013};
+  static constexpr float DEFAULT_LOAD_FACTOR{0.75};
+
+  size_t capacity_; // number of buckets
   float max_load_factor_;
-  // An array of buckets
-  AtomicLinkedList<int, int> *table_;
-  // The current number of key-value pairs in the hash table
-  size_t size_ {0};
-  // The global reader/writer lock
-  ReaderWriterLock lock_;
+  std::atomic<size_t> size_{0};  // current number of key-value pairs in the hash table
+  AtomicLinkedList<KeyType, ValueType> *table_; // array of buckets
+  ReaderWriterLock lock_; // global reader/writer lock
 };
 
 #include "lock_free_hash_table.cpp"
 
-#endif // LOCK_FREE_HASH_TABLE_H_
+#endif  // LOCK_FREE_HASH_TABLE_H_

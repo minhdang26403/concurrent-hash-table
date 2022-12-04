@@ -10,10 +10,8 @@ LockFreeHashTable<KeyType, ValueType>::~LockFreeHashTable() {
 
 template <typename KeyType, typename ValueType>
 ValueType LockFreeHashTable<KeyType, ValueType>::Get(const KeyType &key) {
-  lock_.ReadLock();
   size_t idx = KeyToIndex(key);
   ValueType value = table_[idx].Search(key);
-  lock_.ReadUnlock();
   return value;
 }
 
