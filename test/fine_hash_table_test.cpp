@@ -11,8 +11,8 @@
 static constexpr int NUM_THREADS = 4;
 static constexpr int NUM_KEYS = 1000000;
 
-void Test1() {
-  std::cout << "-------Test 1-------\n";
+void CorrectnessTest1() {
+  std::cout << "----------Correctness Test 1----------\n";
   FineHashTable<int, int> hash_table;
   for (int i = 0; i < 10; ++i) {
     hash_table.Insert(i + 1, i + 1);
@@ -27,14 +27,13 @@ void Test1() {
   hash_table.Insert(5, 10);
 }
 
-void Test2() {
-  std::cout << "-------Test 2-------\n";
+void CorrectnessTest2() {
+  std::cout << "----------Test 2----------\n";
   FineHashTable<int, int> hash_table(4, 0.75);
 
   for (int i = 0; i < 30; ++i) {
     hash_table.Insert(i + 1, i + 1);
   }
-
   for (int i = 0; i < 15; ++i) {
     if (i % 2 == 0) {
       hash_table.Delete(i);
@@ -75,7 +74,6 @@ void Test3() {
     random_kv.emplace_back(k, v);
   }
 
-  
   auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < NUM_THREADS; ++i) {
     threads.push_back(
@@ -94,17 +92,19 @@ void Test3() {
       << " ms \n";
 }
 
-void insert(int i, FineHashTable<int, int> &hash_table) {
-  int start = i * 500;
+void insert(int id, FineHashTable<int, int> &hash_table) {
+  int start = id * 500;
   for (int i = start; i < start + 500; ++i) {
     hash_table.Insert(i, i);
   }
+
   for (int i = start; i < start + 500; ++i) {
-    if (i % 5 == 0) {
-      assert(hash_table.Contains(i)); 
-      // assert(hash_table.Get(i) == i); 
-      // hash_table.Delete(i); 
+    if (!hash_table.Contains(i)) {
+      std::cout << i << std::endl;
     }
+    assert(hash_table.Contains(i)); 
+    // assert(hash_table.Get(i) == i); 
+    // hash_table.Delete(i); 
   }
 }
 
@@ -120,17 +120,14 @@ void Test4() {
   for (auto &thread : threads) {
     thread.join();
   }
-
-  std::cout << hash_table.size() << std::endl;
-
 }
 
 
 int main() {
-  // Test1();
-  // Test2();
-  Test3();
-  Test4();
+  // CorrectnessTest1();
+  // CorrectnessTest2();
+  // Test3();
+  // Test4();
 
   std::cout << "All test cases passed\n";
 

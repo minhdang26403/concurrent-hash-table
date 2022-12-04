@@ -2,79 +2,160 @@
 
 #include <cassert>
 #include <chrono>
-#include <iostream>
 #include <functional>
+#include <iostream>
 #include <thread>
-#include <utility>
 #include <unordered_map>
-#include <vector>
+#include <utility>
 
-static constexpr int NUM_THREADS = 32;
-static constexpr int NUM_KEYS = 1000000;
+static int NUM_THREADS = 4;
+static constexpr int NUM_OPS = 1000000;
 
-void Test1() {
-  std::cout << "-------Test 1-------\n";
+enum Ops {
+  READ,
+  INSERT,
+  DELETE,
+};
+
+/**
+ * Correctness Test for the coarse-grained hash table
+ */
+
+void CorrectnessTest1() {
+  std::cout << "----------Correctness Test 1----------\n";
   CoarseHashTable<int, int> hash_table;
   for (int i = 0; i < 10; ++i) {
     hash_table.Insert(i + 1, i + 1);
   }
-
   hash_table.Delete(2);
   hash_table.Delete(6);
   hash_table.Delete(4);
-
   assert(hash_table.Get(1) == 1);
   assert(!hash_table.Contains(2));
   hash_table.Insert(5, 10);
+  std::cout << "Correctness Test 1 passed\n";
 }
 
-void Test2() {
-  std::cout << "-------Test 2-------\n";
+void CorrectnessTest2() {
+  std::cout << "----------Correctness Test 2----------\n";
   CoarseHashTable<int, int> hash_table(4, 0.75);
-
   for (int i = 0; i < 10; ++i) {
     hash_table.Insert(i + 1, i + 1);
   }
-
   for (int i = 0; i < 10; ++i) {
     if (i % 2 == 0) {
       hash_table.Delete(i);
     }
   }
-
   assert(hash_table.Contains(5));
   assert(!hash_table.Contains(8));
   assert(hash_table.Get(7) == 7);
+  std::cout << "Correctness Test 2 passed\n";
 }
 
-void do_work(int id, CoarseHashTable<int, int> &hash_table,
-             std::vector<std::pair<int, int>> &random_kv) {
-  int stride = NUM_KEYS / NUM_THREADS;
+void ConcurrentSearchInsertDelete(int id,
+                                  CoarseHashTable<int, int> &hash_table) {
+  int stride = NUM_OPS / NUM_THREADS;
   int start = id * stride;
   for (int i = start; i < start + stride; ++i) {
-    if (i % 5 == 0) {
-      hash_table.Insert(rand(), rand());
+    if (i % 2 == 0) {
+      hash_table.Insert(i, i);
+    }
+  }
+
+  for (int i = start; i < start + stride; ++i) {
+    if (i % 2 == 0) {
+      assert(hash_table.Contains(i));
+      assert(hash_table.Get(i) == i);
     } else {
-      hash_table.Get(random_kv[i].first);
+      assert(!hash_table.Contains(i));
+    }
+  }
+
+  for (int i = start; i < start + stride; ++i) {
+    if (i % 2 == 0) {
+      hash_table.Delete(i);
+    } else {
+      hash_table.Insert(i, i);
+    }
+  }
+
+  for (int i = start; i < start + stride; ++i) {
+    if (i % 2 == 0) {
+      assert(!hash_table.Contains(i));
+    } else {
+      assert(hash_table.Contains(i));
+      assert(hash_table.Get(i) == i);
     }
   }
 }
 
-void Test3() {
-  std::cout << "-------Test 3-------\n";
+void CorrectnessTest3() {
+  std::cout << "----------Correctness Test 3----------\n";
   CoarseHashTable<int, int> hash_table;
   std::vector<std::thread> threads;
-  std::vector<std::pair<int, int>> random_kv;
-  for (int i = 0; i < NUM_KEYS; ++i) {
-    int k = rand();
-    int v = rand();
-    hash_table.Insert(k, v);
-    random_kv.emplace_back(k, v);
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    threads.push_back(
+        std::thread(ConcurrentSearchInsertDelete, i, std::ref(hash_table)));
   }
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  std::cout << "Correctness Test 3 passed\n";
+}
+
+/**
+ * Benchmark for the coarse-grained hash table.
+ * Performs concurrent read, insert, and delete without checking for
+ * correctness, only making sure that everything completes without crashing.
+ */
+
+std::vector<Ops> CreateWorkLoad(int num_read, int num_insert, int num_delete) {
+  std::vector<Ops> op_mix;
+  for (int i = 0; i < num_read; ++i) {
+    op_mix.push_back(READ);
+  }
+  for (int i = 0; i < num_insert; ++i) {
+    op_mix.push_back(INSERT);
+  }
+  for (int i = 0; i < num_delete; ++i) {
+    op_mix.push_back(DELETE);
+  }
+  std::random_shuffle(op_mix.begin(), op_mix.end());
+
+  return op_mix;
+}
+
+void mixed_workload(int id, CoarseHashTable<int, int> &hash_table,
+                    std::vector<Ops> &op_mix,
+                    std::vector<std::pair<int, int>> &data) {
+  int stride = NUM_OPS / NUM_THREADS;
+  int start = id * stride;
+
+  for (int i = start; i < start + stride; ++i) {
+    int idx = i % 100;
+    if (op_mix[idx] == READ) {
+      hash_table.Get(data[i].first);
+    } else if (op_mix[idx] == INSERT) {
+      hash_table.Insert(data[i].first, data[i].second);
+    } else {
+      hash_table.Delete(data[i].first);
+    }
+  }
+}
+
+void Benchmark(int num_read, int num_insert, int num_delete,
+               std::vector<std::pair<int, int>> &data) {
+  std::vector<Ops> op_mix = CreateWorkLoad(num_read, num_insert, num_delete);
+  CoarseHashTable<int, int> hash_table;
+  std::vector<std::thread> threads;
 
   auto start = std::chrono::steady_clock::now();
   for (int i = 0; i < NUM_THREADS; ++i) {
-    threads.push_back(std::thread(do_work, i, std::ref(hash_table), std::ref(random_kv)));
+    threads.push_back(std::thread(mixed_workload, i, std::ref(hash_table),
+                                  std::ref(op_mix), std::ref(data)));
   }
 
   for (auto &thread : threads) {
@@ -84,79 +165,30 @@ void Test3() {
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> elapsed = end - start;
   std::cout
-      << "1 millions access (800K reads and 200K writes) on coarse-grained hash table: "
-      << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count()
-      << " ms \n";
-
-  // Unordered_map
-  std::unordered_map<int, int> map;
-  for (int i = 0; i < NUM_KEYS; ++i) {
-    int k = rand();
-    int v = rand();
-    map.insert({k, v});
-    random_kv.emplace_back(k, v);
-  }
-  start = std::chrono::steady_clock::now();
-  for (int i = 0; i < NUM_KEYS; ++i) {
-    if (i % 5 == 0) {
-      map.insert({rand(), rand()});
-    } else {
-      map[random_kv[i].first];
-    }
-  }
-  end = std::chrono::steady_clock::now();
-  elapsed = end - start;
-  std::cout
-      << "1 millions access (800K reads and 200K writes) on unordered_map: "
+      << NUM_OPS << " access (" << num_read << "% read, " << num_insert
+      << "% insert, " << num_delete
+      << "% delete) on coarse-grained hash table: "
       << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count()
       << " ms \n";
 }
 
-void do_work_test4(int i, CoarseHashTable<int, int> &hash_table) {
-  int start = i * 500;
-  for (int i = start; i < start + 500; ++i) {
-    hash_table.Insert(i, i);
-  }
-  for (int i = start; i < start + 500; ++i) {
-    if (i % 5 == 0)
-    {
-      assert(hash_table.Contains(i)); 
-      assert(hash_table.Get(i) == i); 
-      hash_table.Delete(i); 
-      hash_table.Delete(i); // nothing happens when deleting an invalid number
-      assert(!hash_table.Get(i)); 
-      assert(!hash_table.Contains(i)); 
-    }
-    else 
-    {
-      assert(hash_table.Contains(i)); 
-      assert(hash_table.Get(i) == i); 
-    }
+void GenerateKeyValue(std::vector<std::pair<int, int>> &data) {
+  for (int i = 0; i < NUM_OPS; ++i) {
+    data.push_back({rand(), rand()});
   }
 }
 
-void Test4() 
-{
-  std::cout << "-------Test 4-------\n";
-  CoarseHashTable<int, int> hash_table;
-  std::vector<std::thread> threads;
-  
-  for (int i = 0; i < NUM_THREADS; ++i) {
-    threads.push_back(std::thread(do_work_test4, i, std::ref(hash_table)));
+int main(int argc, char **argv) {
+  // CorrectnessTest1();
+  // CorrectnessTest2();
+  // CorrectnessTest3();
+
+  if (argc > 1) {
+    NUM_THREADS = atoi(argv[1]);
   }
-
-  for (auto &thread : threads) {
-    thread.join();
-  }
-}
-
-
-
-int main() {
-  Test1();
-  Test2();
-  Test3();
-  Test4(); 
+  std::vector<std::pair<int, int>> data;
+  GenerateKeyValue(data);
+  Benchmark(80, 10, 10, data);
 
   std::cout << "All test cases passed\n";
 
