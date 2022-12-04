@@ -4,6 +4,7 @@
 #include <atomic>
 #include <iostream>
 
+
 template <typename KeyType, typename ValueType>
 class AtomicLinkedList {
  public:
@@ -14,103 +15,48 @@ class AtomicLinkedList {
    * Node object contains key-value pair and MarkPtr field
    */
   struct Node {
-    KeyType key_;      // the key of a node
-    ValueType value_;  // the value of a node
-    MarkPtrType ptr_{};  // a wrapper for the `next` pointer pointing to the next node
+    KeyType key_;
+    ValueType value_;
+    MarkPtrType ptr_{};
 
-    /**
-     * Constructs a Node instance
-     * @param key the key of an entry
-     * @param value the value of an entry
-     */
     Node(const KeyType &key, const ValueType &value)
         : key_(key), value_(value) {}
   };
 
-  /**
-   * MarkPtrType is a wrapper for `next` field within each node of the linked
-   * list. The MarkPtrType contains a `next` pointer pointing to the next node
-   * and extra information
-   */
-
   struct MarkPtrType {
-    __int128_t val{};  // underlying type for the pointer
+    __int128_t val{};
 
     MarkPtrType() = default;
 
-    /**
-     * Constructs a MarkPtrType object
-     * @param mark a mark bit indicates whether the node holds this MarkPtrType
-     * object is deleted
-     * @param next a pointer to the next node
-     * @param tag a unique tag for this node
-     */
     MarkPtrType(bool mark, Node *next, uint64_t tag) {
       val |= tag;
       val <<= 64;
       val |= ((uint64_t)next) | (mark ? 1 : 0);
     }
 
-    /**
-     * Equal operator overloading for MarkPtrType object
-     * @param other the other MarkPtrType object to compare with
-     * @return true if two objects are equal; otherwise, return false
-     */
     bool operator==(const MarkPtrType &other) { return val == other.val; }
 
-    /**
-     * Not equal operator overloading for MarkPtrType object
-     * @param other the other MarkPtrType object to compare with
-     * @return true if two objects are not equal; otherwise, return false
-     */
     bool operator!=(const MarkPtrType &other) { return !(*this == other); }
 
-    /**
-     * Gets the pointer field
-     * @return a pointer to the next node
-     */
     Node *GetPtr() { return (Node *)(val & MASK); }
 
-    /**
-     * Gets the tag field
-     * @return the tag of the MarkPtrType object
-     */
     uint64_t GetTag() { return static_cast<uint64_t>((val >> 64) & MASK); }
 
-    /**
-     * Gets the mark field
-     * @return true if the node holding this MarkPtrType object is deleted;
-     * otherwise, return false
-     */
     bool GetMark() { return static_cast<bool>(val & 0x1); }
 
-    /**
-     * Sets the mark and `next` pointer field
-     * @param mark a bit indicates whether the node holding this MarkPtrType
-     * object
-     * @param next a pointer to the next node
-     */
     void SetMarkPtr(bool mark, Node *next) {
       val |= ((uint64_t)next) | (mark ? 1 : 0);
     }
 
-    /**
-     * Sets the tag field
-     * @param tag the tag of the MarkPtrType object
-     */
     void SetTag(uint64_t tag) {
       __int128_t ctag = tag;
       ctag <<= 64;
       val |= ctag;
     }
 
-    // Mask for extracting lower-order 8 bytes
     static const uint64_t MASK = 0xffffffffffffffff;
   };
 
-  /**
-   * a struct captures a snapshot of the linked list
-   */
   struct Snapshot {
     MarkPtrType *prev;
     MarkPtrType cur;
@@ -139,7 +85,7 @@ class AtomicLinkedList {
       }
       prev = snapshot.prev;
       cur = snapshot.cur;
-
+    
       node->ptr_.SetMarkPtr(0, cur.GetPtr());
 
       MarkPtrType oldval(false, cur.GetPtr(), cur.GetTag());
@@ -245,7 +191,9 @@ class AtomicLinkedList {
     }
   }
 
-  void DeleteNode(Node *node) { delete node; }
+  void DeleteNode(Node *node) { 
+    delete node; 
+  }
 
   void Deallocate(MarkPtrType *node) {
     if (node->GetPtr() == nullptr) {
@@ -256,6 +204,10 @@ class AtomicLinkedList {
   }
 
  private:
+  // MarkPtrType *prev;
+  // MarkPtrType cur;
+  // MarkPtrType next;
+
   MarkPtrType *head;
 };
 
