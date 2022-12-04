@@ -25,3 +25,16 @@
   - 8 threads: 240 ms
   - 10 threads: 277 ms
   - 12 threads: 293 ms
+
+## Lock-free hash table
+
+- 1000000 access (80% read, 10% insert, 10% delete) on coarse-grained hash table: 
+  - 2 threads: 51 ms
+  - 4 threads: 28 ms
+  - 6 threads: 31 ms
+  - 8 threads: 24 ms
+  - 10 threads: 20 ms
+  - 12 threads: 20 ms
+
+
+Further data may be collected for the paper.
