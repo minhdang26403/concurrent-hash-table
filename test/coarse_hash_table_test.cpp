@@ -20,7 +20,6 @@ enum Ops {
 /**
  * Correctness Test for the coarse-grained hash table
  */
-
 void CorrectnessTest1() {
   std::cout << "----------Correctness Test 1----------\n";
   CoarseHashTable<int, int> hash_table;
