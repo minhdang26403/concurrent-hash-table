@@ -79,15 +79,16 @@ void CoarseHashTable<KeyType, ValueType>::GrowHashTable() {
   // Allocates a new hash table and copies all key-value pair from
   // the old hash table
   lock_.WriteLock();
-  auto new_table = new std::vector<Entry>[capacity_ * 2];
-  for (size_t idx = 0; idx < capacity_; ++idx) {
+  size_t old_capacity = capacity_;
+  capacity_ *= 2;
+  auto new_table = new std::vector<Entry>[capacity_];
+  for (size_t idx = 0; idx < old_capacity; ++idx) {
     for (const auto &entry : table_[idx]) {
       size_t new_idx = KeyToIndex(entry.key_);
       new_table[new_idx].push_back(entry);
     }
   }
 
-  capacity_ *= 2;
   delete[] table_;
   table_ = new_table;
   lock_.WriteUnlock();

@@ -1,8 +1,10 @@
 #ifndef FINE_HASH_TABLE_H_
 #define FINE_HASH_TABLE_H_
 
+#include <algorithm>
 #include <atomic>
-#include <list>
+#include <vector>
+#include <iostream>
 
 #include "rwlock.h"
 
@@ -61,7 +63,7 @@ class Bucket {
    */
   bool DeleteKV(const KeyType &key);
 
-  std::vector<Entry> &GetKVList() { return list_; }
+  std::vector<Entry>& GetKVList() { return list_; }
 
  private:
   ReaderWriterLock lock_; // the private lock of each bucket

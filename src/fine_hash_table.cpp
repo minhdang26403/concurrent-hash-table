@@ -3,12 +3,11 @@
 template <typename KeyType, typename ValueType>
 Bucket<KeyType, ValueType>& Bucket<KeyType, ValueType>::operator=(Bucket &other) {
   // avoid self-assignment
-  if (this == &other) {
-    return *this;
+  if (this != &other) {
+    lock_.WriteLock();
+    list_ = other.GetKVList();
+    lock_.WriteUnlock();
   }
-  lock_.WriteLock();
-  list_ = other.GetKVList();
-  lock_.WriteUnlock();
   return *this;
 }
 
@@ -99,17 +98,16 @@ bool FineHashTable<KeyType, ValueType>::Contains(const KeyType &key) {
 template<typename KeyType, typename ValueType>
 void FineHashTable<KeyType, ValueType>::Insert(const KeyType &key, const ValueType &value) {
   global_lock_.ReadLock();
-  if (size_ > capacity_ * max_load_factor_) {
-    global_lock_.ReadUnlock();
-    GrowHashTable();
-    global_lock_.ReadLock();
-  }
-
   size_t idx = KeyToIndex(key);
   if (table_[idx].InsertKV(key, value)) {
     ++size_;
   }
-  global_lock_.ReadUnlock();
+  if (size_ > capacity_ * max_load_factor_) {
+    global_lock_.ReadUnlock();
+    GrowHashTable();
+  } else {
+    global_lock_.ReadUnlock();
+  }
 }
 
 template<typename KeyType, typename ValueType>
@@ -131,12 +129,16 @@ void FineHashTable<KeyType, ValueType>::GrowHashTable() {
     global_lock_.WriteUnlock();
     return;
   }
-  auto new_table = new Bucket<KeyType, ValueType>[capacity_ * 2];
-  for (size_t idx = 0; idx < capacity_; ++idx) {
-    new_table[idx] = table_[idx];
+  size_t old_capacity = capacity_;
+  capacity_ *= 2;
+  auto new_table = new Bucket<KeyType, ValueType>[capacity_];
+  for (size_t idx = 0; idx < old_capacity; ++idx) {
+    for (const auto &entry : table_[idx].GetKVList()) {
+      size_t new_idx = KeyToIndex(entry.key_);
+      new_table[new_idx].GetKVList().emplace_back(entry.key_, entry.value_);
+    }
   }
 
-  capacity_ *= 2;
   delete[] table_;
   table_ = new_table;
   global_lock_.WriteUnlock();
