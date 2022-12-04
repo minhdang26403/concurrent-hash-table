@@ -176,9 +176,9 @@ void GenerateKeyValue(std::vector<std::pair<int, int>> &data) {
 }
 
 int main(int argc, char **argv) {
-  CorrectnessTest1();
-  CorrectnessTest2();
-  CorrectnessTest3();
+  // CorrectnessTest1();
+  // CorrectnessTest2();
+  // CorrectnessTest3();
 
   if (argc > 1) {
     NUM_THREADS = atoi(argv[1]);
