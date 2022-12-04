@@ -9,7 +9,7 @@
 /**
  * Coarse-grained hash table with one global reader/writer lock
  */
-template<typename KeyType, typename ValueType>
+template <typename KeyType, typename ValueType>
 class CoarseHashTable {
  private:
   struct Entry {
@@ -48,7 +48,7 @@ class CoarseHashTable {
    * Disallows copy
    */
   CoarseHashTable(const CoarseHashTable &other) = delete;
-  CoarseHashTable& operator=(const CoarseHashTable &other) = delete;
+  CoarseHashTable &operator=(const CoarseHashTable &other) = delete;
 
   /**
    * Destroys an existing CoarseHashTable instance.
@@ -98,19 +98,17 @@ class CoarseHashTable {
    */
   void GrowHashTable();
 
-  // Default number of buckets
-  static constexpr size_t DEFAULT_CAPACITY {128};
-  static constexpr float DEFAULT_LOAD_FACTOR {0.75};
-  size_t capacity_;
+  // Default hash table value
+  static constexpr size_t DEFAULT_CAPACITY{128};
+  static constexpr float DEFAULT_LOAD_FACTOR{0.75};
+
+  size_t capacity_;  // number of buckets
   float max_load_factor_;
-  // An array of buckets
-  std::vector<Entry> *table_;
-  // The current number of key-value pairs in the hash table
-  size_t size_ {0};
-  // The global reader/writer lock
-  ReaderWriterLock lock_;
+  size_t size_{0};   // current number of key-value pairs in the hash table
+  std::vector<Entry> *table_;  // array of buckets
+  ReaderWriterLock lock_;      // global reader/writer lock
 };
 
 #include "coarse_hash_table.cpp"
 
-#endif
+#endif  // COARSE_HASH_TABLE_H_

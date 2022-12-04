@@ -1,12 +1,11 @@
 #include "coarse_hash_table.h"
 
-template<typename KeyType, typename ValueType>
+template <typename KeyType, typename ValueType>
 CoarseHashTable<KeyType, ValueType>::~CoarseHashTable() {
   lock_.WriteLock();
-  delete []table_;
+  delete[] table_;
   lock_.WriteUnlock();
 }
-
 
 template <typename KeyType, typename ValueType>
 ValueType CoarseHashTable<KeyType, ValueType>::Get(const KeyType &key) {
@@ -24,7 +23,8 @@ ValueType CoarseHashTable<KeyType, ValueType>::Get(const KeyType &key) {
 }
 
 template <typename KeyType, typename ValueType>
-void CoarseHashTable<KeyType, ValueType>::Insert(const KeyType &key, const ValueType &value) {
+void CoarseHashTable<KeyType, ValueType>::Insert(const KeyType &key,
+                                                 const ValueType &value) {
   lock_.WriteLock();
   size_t idx = KeyToIndex(key);
   for (auto &entry : table_[idx]) {
@@ -60,7 +60,7 @@ void CoarseHashTable<KeyType, ValueType>::Delete(const KeyType &key) {
   lock_.WriteUnlock();
 }
 
-template<typename KeyType, typename ValueType>
+template <typename KeyType, typename ValueType>
 bool CoarseHashTable<KeyType, ValueType>::Contains(const KeyType &key) {
   lock_.ReadLock();
   size_t idx = KeyToIndex(key);
