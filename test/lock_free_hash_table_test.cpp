@@ -3,8 +3,8 @@
 
 #include <algorithm>
 #include <cassert>
-#include <vector>
 #include <thread>
+#include <vector>
 
 static int NUM_THREADS = 4;
 static constexpr int NUM_OPS = 1000000;

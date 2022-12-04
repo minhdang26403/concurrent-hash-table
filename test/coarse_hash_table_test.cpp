@@ -5,7 +5,6 @@
 #include <functional>
 #include <iostream>
 #include <thread>
-#include <unordered_map>
 #include <utility>
 
 static int NUM_THREADS = 4;
