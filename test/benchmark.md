@@ -9,32 +9,32 @@
 ## Coarse-grained hash table
 
 - 1000000 access (80% read, 10% insert, 10% delete) on coarse-grained hash table: 
-  - 2 threads: 595 ms
-  - 4 threads: 650 ms
-  - 6 threads: 720 ms
-  - 8 threads: 730 ms
-  - 10 threads: 760 ms
-  - 12 threads: 783 ms
+  - 2 threads: 477 ms
+  - 4 threads: 532 ms
+  - 6 threads: 547 ms
+  - 8 threads: 554 ms
+  - 10 threads: 564 ms
+  - 12 threads: 570 ms
 
 ## Fine-grained hash table
 
 - 1000000 access (80% read, 10% insert, 10% delete) on coarse-grained hash table: 
-  - 2 threads: 253 ms
-  - 4 threads: 240 ms
-  - 6 threads: 234 ms
-  - 8 threads: 240 ms
-  - 10 threads: 277 ms
-  - 12 threads: 293 ms
+  - 2 threads: 182 ms
+  - 4 threads: 189 ms
+  - 6 threads: 205 ms
+  - 8 threads: 190 ms
+  - 10 threads: 197 ms
+  - 12 threads: 196 ms
 
 ## Lock-free hash table
 
 - 1000000 access (80% read, 10% insert, 10% delete) on coarse-grained hash table: 
-  - 2 threads: 51 ms
-  - 4 threads: 28 ms
-  - 6 threads: 31 ms
-  - 8 threads: 24 ms
-  - 10 threads: 20 ms
-  - 12 threads: 20 ms
+  - 2 threads: 40 ms
+  - 4 threads: 22 ms
+  - 6 threads: 16 ms
+  - 8 threads: 14 ms
+  - 10 threads: 16 ms
+  - 12 threads: 14 ms
 
 
 Further data may be collected for the paper.
