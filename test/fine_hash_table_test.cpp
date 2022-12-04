@@ -63,6 +63,7 @@ void do_work(int id, FineHashTable<int, int> &hash_table,
 }
 
 void Test3() {
+  std::cout << "-------Test 3-------\n";
   FineHashTable<int, int> hash_table;
   std::vector<std::thread> threads;
   std::vector<std::pair<int, int>> random_kv;
@@ -98,9 +99,17 @@ void insert(int i, FineHashTable<int, int> &hash_table) {
   for (int i = start; i < start + 500; ++i) {
     hash_table.Insert(i, i);
   }
+  for (int i = start; i < start + 500; ++i) {
+    if (i % 5 == 0) {
+      assert(hash_table.Contains(i)); 
+      // assert(hash_table.Get(i) == i); 
+      // hash_table.Delete(i); 
+    }
+  }
 }
 
 void Test4() {
+  std::cout << "-------Test 4-------\n";
   FineHashTable<int, int> hash_table;
   std::vector<std::thread> threads;
   std::vector<std::pair<int, int>> random_kv;
@@ -108,7 +117,6 @@ void Test4() {
     threads.push_back(
         std::thread(insert, i, std::ref(hash_table)));
   }
-
   for (auto &thread : threads) {
     thread.join();
   }
@@ -122,7 +130,7 @@ int main() {
   // Test1();
   // Test2();
   Test3();
-  // Test4();
+  Test4();
 
   std::cout << "All test cases passed\n";
 

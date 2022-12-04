@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-static constexpr int NUM_THREADS = 4;
+static constexpr int NUM_THREADS = 32;
 static constexpr int NUM_KEYS = 1000000;
 
 void Test1() {
@@ -61,6 +61,7 @@ void do_work(int id, CoarseHashTable<int, int> &hash_table,
 }
 
 void Test3() {
+  std::cout << "-------Test 3-------\n";
   CoarseHashTable<int, int> hash_table;
   std::vector<std::thread> threads;
   std::vector<std::pair<int, int>> random_kv;
@@ -111,10 +112,51 @@ void Test3() {
       << " ms \n";
 }
 
+void do_work_test4(int i, CoarseHashTable<int, int> &hash_table) {
+  int start = i * 500;
+  for (int i = start; i < start + 500; ++i) {
+    hash_table.Insert(i, i);
+  }
+  for (int i = start; i < start + 500; ++i) {
+    if (i % 5 == 0)
+    {
+      assert(hash_table.Contains(i)); 
+      assert(hash_table.Get(i) == i); 
+      hash_table.Delete(i); 
+      hash_table.Delete(i); // nothing happens when deleting an invalid number
+      assert(!hash_table.Get(i)); 
+      assert(!hash_table.Contains(i)); 
+    }
+    else 
+    {
+      assert(hash_table.Contains(i)); 
+      assert(hash_table.Get(i) == i); 
+    }
+  }
+}
+
+void Test4() 
+{
+  std::cout << "-------Test 4-------\n";
+  CoarseHashTable<int, int> hash_table;
+  std::vector<std::thread> threads;
+  
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    threads.push_back(std::thread(do_work_test4, i, std::ref(hash_table)));
+  }
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}
+
+
+
 int main() {
-  // Test1();
-  // Test2();
+  Test1();
+  Test2();
   Test3();
+  Test4(); 
 
   std::cout << "All test cases passed\n";
 
