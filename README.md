@@ -4,9 +4,8 @@
 2. Fine-grained hash table: Done
 3. Lock-free hash table: Done
 4. Test cases and benchmark: Done
+5. Write up results in the format of a [conference paper](./cs401_final_project_paper.pdf): Done
 
-TODO:
-1. Write up results in the format of a conference paper
 
 Reference:
 1. [Lock-free hash table](https://docs.rs/crate/crossbeam/0.2.4/source/hash-and-skip.pdf)
