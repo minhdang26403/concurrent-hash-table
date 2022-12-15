@@ -1,10 +1,10 @@
 # Concurrent Hash Table
 
-1. Coarse-grained hash table: Done
-2. Fine-grained hash table: Done
-3. Lock-free hash table: Done
-4. Test cases and benchmark: Done
-5. Write up results in the format of a [conference paper](./cs401_final_project_paper.pdf): Done
+- [x] Coarse-grained hash table
+- [x] Fine-grained hash table
+- [x] Lock-free hash table
+- [x] Test cases and benchmark
+- [x] Write up results in the format of a [conference paper](./cs401_final_project_paper.pdf)
 
 
 Reference:
